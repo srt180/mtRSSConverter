@@ -3,10 +3,9 @@ FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 COPY . .
+RUN apk add --no-cache gcc g++ musl-dev
 RUN go mod tidy
-
-# 构建应用程序
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o mtRSSConverter .
+RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o mtRSSConverter .
 
 # 使用alpine作为运行阶段基础镜像
 FROM alpine:latest
