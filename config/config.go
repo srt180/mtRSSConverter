@@ -12,10 +12,13 @@ type Config struct {
 
 	// db config for sqlite
 	SQLitePath string
+	// server base address for generating fetch URLs
+	BaseAddr string
 }
 
 var C = &Config{
 	SQLitePath: getEnv("SQLITE_PATH", "./mtRSSConverter.db"),
+	BaseAddr:   getEnv("BASE_ADDR", "http://localhost:8080"),
 }
 
 func getEnv[T any](key string, defaultValue T) T {
