@@ -1,0 +1,1 @@
+docker run -e SQLITE_PATH="./data/mtrssconverter.db" -e BASE_ADDR="http://{{NAS_IP}}:8080" -d -p 8080:8080 -v ./data:/root/data --name mtc registry.cn-hangzhou.aliyuncs.com/srt180/mtrssconverter:latest
