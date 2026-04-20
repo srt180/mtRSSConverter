@@ -15,5 +15,5 @@ func main() {
 	r.GET("/fetch/:guid", handlers.Fetch)
 	r.HEAD("/fetch/:guid", handlers.Fetch)
 
-	r.Run(":8081")
+	r.Run(":8080")
 }
