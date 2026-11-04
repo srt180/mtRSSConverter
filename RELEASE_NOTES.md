@@ -1,4 +1,4 @@
-# v0.1.1 — Download Station RSS 兼容性修复
+# v0.1.2 — Download Station RSS 兼容性修复
 
 本次基于旧版 RSS 转换服务发布补丁，尝试解决 issue #2 中“将排除无效或已封锁的链接”的问题。新版 Web 界面及下载管理功能仍在开发中，不包含在这次补丁里。
 
@@ -16,7 +16,7 @@
 2. 拉取版本镜像：
 
    ```sh
-   docker pull registry.cn-hangzhou.aliyuncs.com/srt180/mtrssconverter:v0.1.1
+   docker pull registry.cn-hangzhou.aliyuncs.com/srt180/mtrssconverter:v0.1.2
    ```
 
 3. 使用新镜像重新创建容器，保留原有端口、`SQLITE_PATH`、数据库挂载和其他配置。群晖 Container Manager 可下载该镜像后按原配置重建。数据库格式和容器内旧版路径保持兼容。
@@ -28,12 +28,12 @@
 ```sh
 docker stop mtc
 # 此时另行备份 ./data；保留旧容器方便回退
-docker rename mtc mtc-before-v0.1.1
+docker rename mtc mtc-before-v0.1.2
 docker run -d --name mtc -p 8080:8080 \
   -e SQLITE_PATH=./data/mtrssconverter.db \
   -e BASE_ADDR=http://192.168.1.20:8080 \
   -v "$PWD/data:/root/data" \
-  registry.cn-hangzhou.aliyuncs.com/srt180/mtrssconverter:v0.1.1
+  registry.cn-hangzhou.aliyuncs.com/srt180/mtrssconverter:v0.1.2
 ```
 
 ## 验证范围
