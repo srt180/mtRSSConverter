@@ -1,9 +1,10 @@
 package handlers
 
 import (
-	"fmt"
 	"io"
+	"mime"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -35,7 +36,11 @@ func RSS(c *gin.Context) {
 		return
 	}
 
-	newURLPrefix := fmt.Sprintf("%s/fetch/", config.C.BaseAddr)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "RSS upstream returned an error"})
+		return
+	}
+	newURLPrefix := strings.TrimRight(config.C.BaseAddr, "/") + "/fetch/"
 	newBody, err := services.ModifyRSSEnclosureURL(body, newURLPrefix)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Modify RSS failed: " + err.Error()})
@@ -49,7 +54,7 @@ func RSS(c *gin.Context) {
 func Fetch(c *gin.Context) {
 	db := config.C.DB
 
-	guid := c.Param("guid")
+	guid := strings.TrimSuffix(c.Param("guid"), ".torrent")
 	if guid == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "GUID is required"})
 		return
@@ -74,8 +79,16 @@ func Fetch(c *gin.Context) {
 		return
 	}
 
-	c.Header("Content-Disposition", resp.Header.Get("Content-Disposition"))
-	c.Header("Content-Type", resp.Header.Get("Content-Type"))
-	c.Header("Content-Length", resp.Header.Get("Content-Length"))
-	c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), body)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "Torrent upstream returned an error"})
+		return
+	}
+	c.Header("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": guid + ".torrent"}))
+	c.Header("Content-Type", "application/x-bittorrent")
+	c.Header("Content-Length", strconv.Itoa(len(body)))
+	if c.Request.Method == http.MethodHead {
+		c.Status(http.StatusOK)
+		return
+	}
+	c.Data(http.StatusOK, "application/x-bittorrent", body)
 }

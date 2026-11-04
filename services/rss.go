@@ -1,8 +1,11 @@
 package services
 
 import (
+	"crypto/sha256"
 	"encoding/xml"
 	"fmt"
+	"net/url"
+	"strings"
 
 	"github.com/srt180/mtRSSConverter/config"
 	"github.com/srt180/mtRSSConverter/models"
@@ -61,15 +64,27 @@ func ModifyRSSEnclosureURL(xmlData []byte, newURLPrefix string) ([]byte, error) 
 	}
 
 	for i, item := range rss.Channel.Items {
-		newItem := models.Item{
-			GUID:   item.GUID,
-			RawURL: rss.Channel.Items[i].Enclosure.URL,
+		rawURL := strings.TrimSpace(item.Enclosure.URL)
+		if rawURL == "" {
+			return nil, fmt.Errorf("RSS item %d is missing an enclosure URL", i+1)
 		}
+		identity := strings.TrimSpace(item.GUID)
+		if identity == "" {
+			identity = stableItemURL(item.Link)
+		}
+		if identity == "" {
+			identity = stableItemURL(rawURL)
+		}
+		sum := sha256.Sum256([]byte(newURLPrefix + "\x00" + identity))
+		mappingID := fmt.Sprintf("%x", sum[:16])
+		newItem := models.Item{GUID: mappingID, RawURL: rawURL}
 		if err := config.C.DB.Save(&newItem).Error; err != nil {
-			// 忽略单条错误，继续处理其它条目
+			return nil, fmt.Errorf("save torrent mapping: %w", err)
 		}
-
-		rss.Channel.Items[i].Enclosure.URL = newURLPrefix + item.GUID
+		torrentURL := newURLPrefix + mappingID + ".torrent"
+		rss.Channel.Items[i].Link = torrentURL
+		rss.Channel.Items[i].Enclosure.URL = torrentURL
+		rss.Channel.Items[i].Enclosure.Type = "application/x-bittorrent"
 	}
 
 	modifiedXML, err := xml.MarshalIndent(rss, "", "  ")
@@ -77,4 +92,25 @@ func ModifyRSSEnclosureURL(xmlData []byte, newURLPrefix string) ([]byte, error) 
 		return nil, fmt.Errorf("序列化RSS失败: %v", err)
 	}
 	return modifiedXML, nil
+}
+
+func stableItemURL(rawURL string) string {
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return ""
+	}
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	query := parsed.Query()
+	for key := range query {
+		switch strings.ToLower(key) {
+		case "t", "sign", "token", "timestamp", "_t", "nonce", "r":
+			query.Del(key)
+		}
+	}
+	parsed.RawQuery = query.Encode()
+	parsed.Fragment = ""
+	return parsed.String()
 }

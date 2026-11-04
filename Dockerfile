@@ -11,6 +11,8 @@ RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o mtRSSConverter .
 FROM alpine:latest
 
 # 设置工作目录
+RUN apk add --no-cache ca-certificates
+
 WORKDIR /root/
 
 # 从构建阶段复制编译好的二进制文件
